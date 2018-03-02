@@ -24,7 +24,8 @@
             [knossos.model :as model]
             [jepsen.mongodb.core :refer :all]
             [jepsen.mongodb.mongo :as m])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import (clojure.lang ExceptionInfo)
+	   (java.util.Date)))
 
 (defrecord Client [db-name
                    coll-name
@@ -98,9 +99,9 @@
            nil))
 
 ; Generators
-(defn w   [_ _] {:type :invoke, :f :write, :value  (java.sql.Timestamp. (.getTime (java.util.Date.)))})
+(defn w   [_ _] {:type :invoke, :f :write, :value (.getTime (java.util.Date.))})
 (defn r   [_ _] {:type :invoke, :f :read})
-(defn cas [_ _] {:type :invoke, :f :cas, :value [(rand-int 5) (rand-int 5)]})
+(defn cas [_ _] {:type :invoke, :f :cas, :value [(rand-int 100) (rand-int 100)]})
 
 (defn test
   "Document-level compare and set. Options are also passed through to
@@ -119,14 +120,14 @@
               " w:" (name (:write-concern opts)))
          (merge
            {:client       (client opts)
-            :concurrency  100
+            :concurrency  10
             :generator    (->> (independent/concurrent-generator
                                  10
-                                 (range 5)
+                                 (range)
                                  (fn [k]
-                                   (->> (gen/mix [w r])
-                                        (gen/reserve 0 (if (:no-reads opts)
-                                                         (gen/mix [w cas cas])
+                                   (->> (gen/mix [w r r])
+                                        (gen/reserve 5 (if (:no-reads opts)
+                                                         (gen/mix [w r r])
                                                          r))
                                         (gen/time-limit
                                           (:key-time-limit opts)))))
